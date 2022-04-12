@@ -56,19 +56,19 @@ conversionLength = length conversion
 timelineMultiplier : Nat
 timelineMultiplier = 6
 
-render : (laneSplit : Bool) -> (offset : Nat) -> (leadup : Nat) -> (leadout : Nat) -> String -> String
-render laneSplit offset leadup leadout str = indent offset $
-                                               renderLaneSplit
-                                               ++ replicate leadup '-'
-                                               ++ renderedTitle str
-                                               ++ replicate leadout '-'
-                                               ++ renderLaneJoin
+render : (laneSplit : Bool) -> (laneJoin : Bool) -> (offset : Nat) -> (leadup : Nat) -> (leadout : Nat) -> String -> String
+render laneSplit laneJoin offset leadup leadout str = indent offset $
+                                                        renderLaneSplit
+                                                        ++ replicate leadup '-'
+                                                        ++ renderedTitle str
+                                                        ++ replicate leadout '-'
+                                                        ++ renderLaneJoin
   where
     renderLaneSplit : String
     renderLaneSplit = if laneSplit then diversion else ""
 
     renderLaneJoin : String
-    renderLaneJoin = if laneSplit then conversion else ""
+    renderLaneJoin = if laneJoin then conversion else ""
 
 ||| If diverted, draw indication of split from above line.
 renderProclevity : (diverted : Bool) -> (offset : Nat) -> Proclevity -> String
@@ -82,7 +82,7 @@ renderProclevity diverted offset (Proc year duration title) =
       leadout' = if not diverted
                     then leadout
                     else leadout `minus` ((diversionLength + conversionLength) `minus` (leadup `minus` leadup'))
-  in render diverted offset leadup' leadout' title
+  in render (diverted && tails >= diversionLength) (diverted && tails >= (diversionLength + conversionLength)) offset leadup' leadout' title
 
 record Lane where
   constructor MkLane
@@ -132,8 +132,9 @@ proclevities =
            , abs 2010 2019 "iOS Developer"
            , abs 2012 2017 "Co-Founder"
            , abs 2016 2019 "Manager"
+           , abs 2018 2022 "API Pedant"
            , abs 2019 2022 "Backend Developer"
---            , abs 2019 2022 "Backend Developer"
+           , abs 2020 2022 "Dependent Type Enthusiest"
            ]
 
 main : IO ()
