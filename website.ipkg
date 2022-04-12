@@ -1,0 +1,8 @@
+package website
+
+main = Main
+modules = Main
+executable = website
+
+depends = contrib
+
