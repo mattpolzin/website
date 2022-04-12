@@ -128,16 +128,18 @@ renderSequence set with (SortedSet.toList set)
 
 proclevities : SortedSet Proclevity
 proclevities =
-  fromList [ abs 2007 2011 "Student"
+  fromList [ abs 1989 2024 "Alive"
+           , abs 2007 2011 "Student"
            , abs 2010 2019 "iOS Developer"
            , abs 2012 2017 "Co-Founder"
            , abs 2016 2019 "Manager"
-           , abs 2016 2025 "Mentor"
+           , abs 2016 2024 "Mentor"
+           , abs 2017 2020 "Swift Fan"
            , abs 2018 2021 "API Pedant"
-           , abs 2019 2025 "Backend Developer"
-           , abs 2019 2025 "Elixir Fan"
-           , abs 2020 2025 "Idris Enthusiest"
-           , abs 2021 2025 "Maven"
+           , abs 2019 2024 "Backend Developer"
+           , abs 2019 2024 "Elixir Fan"
+           , abs 2020 2024 "Idris Enthusiest"
+           , abs 2021 2024 "Maven"
            ]
 
 main : IO ()
