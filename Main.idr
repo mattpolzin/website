@@ -71,13 +71,14 @@ render laneSplit offset leadup leadout str = indent offset $
     renderLaneJoin = if laneSplit then conversion else ""
 
 ||| If diverted, draw indication of split from above line.
-renderProclevity : (diverted : Bool) -> (offset : Nat) -> (leadup : Nat) -> Proclevity -> String
-renderProclevity diverted offset leadup (Proc year duration title) =
+renderProclevity : (diverted : Bool) -> (offset : Nat) -> Proclevity -> String
+renderProclevity diverted offset (Proc year duration title) =
   let renderedTitle = renderedTitle title
       offset   = offset * timelineMultiplier
-      leadup   = leadup * timelineMultiplier
+      tails    = (duration * timelineMultiplier) `minus` (length renderedTitle)
+      leadup   = tails `div` 2
+      leadout  = tails `minus` leadup
       leadup'  = if not diverted then leadup else leadup `minus` diversionLength
-      leadout  = ((max (length renderedTitle) (duration * timelineMultiplier)) `minus` (length renderedTitle))
       leadout' = if not diverted
                     then leadout
                     else leadout `minus` ((diversionLength + conversionLength) `minus` (leadup `minus` leadup'))
@@ -118,18 +119,21 @@ renderSequence set with (SortedSet.toList set)
     renderToLane : (diverted : Bool) -> (minimum : Nat) -> Proclevity -> Lane -> Maybe Lane
     renderToLane diverted minimum p lane = 
       if (p.year * timelineMultiplier) > lane.effectiveMaxYear
-         then Just $ MkLane (lane.show ++ renderProclevity diverted ((p.year `minus` minimum) `minus` ((length lane) `div` timelineMultiplier)) 0 p) (effectiveEndYear diverted p)
+         then Just $ MkLane (lane.show ++ renderProclevity diverted ((p.year `minus` minimum) `minus` ((length lane) `div` timelineMultiplier)) p) (effectiveEndYear diverted p)
          else Nothing
 
     renderToNextLane : (diverted : Bool) -> (minimum : Nat) -> List Lane -> Proclevity -> List Lane
-    renderToNextLane diverted minimum [] p = MkLane (renderProclevity diverted (p.year `minus` minimum) 0 p) (effectiveEndYear diverted p) :: []
+    renderToNextLane diverted minimum [] p = MkLane (renderProclevity diverted (p.year `minus` minimum) p) (effectiveEndYear diverted p) :: []
     renderToNextLane diverted minimum (y :: xs) p = maybe (y :: renderToNextLane True minimum xs p) (:: xs) (renderToLane diverted minimum p y)
 
 proclevities : SortedSet Proclevity
 proclevities =
   fromList [ abs 2007 2011 "Student"
            , abs 2010 2019 "iOS Developer"
-           , abs 2017 2019 "Manager"
+           , abs 2012 2017 "Co-Founder"
+           , abs 2016 2019 "Manager"
+           , abs 2019 2022 "Backend Developer"
+--            , abs 2019 2022 "Backend Developer"
            ]
 
 main : IO ()
