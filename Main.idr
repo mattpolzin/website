@@ -132,9 +132,12 @@ proclevities =
            , abs 2010 2019 "iOS Developer"
            , abs 2012 2017 "Co-Founder"
            , abs 2016 2019 "Manager"
-           , abs 2018 2022 "API Pedant"
-           , abs 2019 2022 "Backend Developer"
-           , abs 2020 2022 "Dependent Type Enthusiest"
+           , abs 2016 2025 "Mentor"
+           , abs 2018 2021 "API Pedant"
+           , abs 2019 2025 "Backend Developer"
+           , abs 2019 2025 "Elixir Fan"
+           , abs 2020 2025 "Idris Enthusiest"
+           , abs 2021 2025 "Maven"
            ]
 
 main : IO ()
