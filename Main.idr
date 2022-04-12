@@ -31,7 +31,7 @@ Eq Proclevity where
 Ord Proclevity where
   compare (Proc y d t) (Proc y' d' t') =
     if (not $ y == y') then compare y y'
-       else if (not $ d == d') then compare d d'
+       else if (not $ d == d') then compare d' d -- duration compared in reverse
                else compare t t'
 
 renderedTitle : String -> String
@@ -49,15 +49,23 @@ diversionLength = length diversion
 conversion : String
 conversion = "-⌏"
 
-conversionLength : Nat
-conversionLength = length conversion
+continuance : String
+continuance = "--"
+
+sameTailLength : length Main.conversion === length Main.continuance
+sameTailLength = Refl
+
+tailLength : Nat
+tailLength = length conversion
 
 ||| The number of dashes to use in the timeline for each year.
 timelineMultiplier : Nat
 timelineMultiplier = 6
 
-render : (laneSplit : Bool) -> (laneJoin : Bool) -> (offset : Nat) -> (leadup : Nat) -> (leadout : Nat) -> String -> String
-render laneSplit laneJoin offset leadup leadout str = indent offset $
+data Tail = None | Join | Ongoing
+
+render : (laneSplit : Bool) -> (tail : Tail) -> (offset : Nat) -> (leadup : Nat) -> (leadout : Nat) -> String -> String
+render laneSplit tail offset leadup leadout str = indent offset $
                                                         renderLaneSplit
                                                         ++ replicate leadup '-'
                                                         ++ renderedTitle str
@@ -68,21 +76,29 @@ render laneSplit laneJoin offset leadup leadout str = indent offset $
     renderLaneSplit = if laneSplit then diversion else ""
 
     renderLaneJoin : String
-    renderLaneJoin = if laneJoin then conversion else ""
+    renderLaneJoin = case tail of
+                          Ongoing => continuance
+                          Join    => conversion
+                          None    => ""
 
 ||| If diverted, draw indication of split from above line.
-renderProclevity : (diverted : Bool) -> (offset : Nat) -> Proclevity -> String
-renderProclevity diverted offset (Proc year duration title) =
+renderProclevity : (diverted : Bool) -> (offset : Nat) -> (currentYear : Nat) -> Proclevity -> String
+renderProclevity diverted offset currentYear (Proc year duration title) =
   let renderedTitle = renderedTitle title
-      offset   = offset * timelineMultiplier
-      tails    = (duration * timelineMultiplier) `minus` (length renderedTitle)
-      leadup   = tails `div` 2
-      leadout  = tails `minus` leadup
-      leadup'  = if not diverted then leadup else leadup `minus` diversionLength
-      leadout' = if not diverted
-                    then leadout
-                    else leadout `minus` ((diversionLength + conversionLength) `minus` (leadup `minus` leadup'))
-  in render (diverted && tails >= diversionLength) (diverted && tails >= (diversionLength + conversionLength)) offset leadup' leadout' title
+      offset    = offset * timelineMultiplier
+      tails     = (duration * timelineMultiplier) `minus` (length renderedTitle)
+      tailStyle = if not (diverted && tails >= (diversionLength + tailLength))
+                     then None
+                     else if (year + duration) > currentYear
+                             then Ongoing
+                             else Join
+      leadup    = tails `div` 2
+      leadout   = tails `minus` leadup
+      leadup'   = if not diverted then leadup else leadup `minus` diversionLength
+      leadout'  = if not diverted
+                     then leadout
+                     else leadout `minus` ((diversionLength + tailLength) `minus` (leadup `minus` leadup'))
+  in render (diverted && tails >= diversionLength) tailStyle offset leadup' leadout' title
 
 record Lane where
   constructor MkLane
@@ -108,8 +124,10 @@ effectiveEndYear diverted (Proc year duration title) = max ((year + duration) * 
     diversionLen = if diverted then diversionLength else 0
 
 ||| Render a sequence of pre-sorted proclevities.
-renderSequence : SortedSet Proclevity -> List Lane
-renderSequence set with (SortedSet.toList set)
+||| The current year is used to determine a point past which entries
+||| have no right-bound (they are ongoing).
+renderSequence : (currentYear : Nat) -> SortedSet Proclevity -> List Lane
+renderSequence currentYear set with (SortedSet.toList set)
   _ | [] = []
   _ | (x :: xs) = foldl (renderToNextLane False x.year) [] (x :: xs)
   where
@@ -119,11 +137,11 @@ renderSequence set with (SortedSet.toList set)
     renderToLane : (diverted : Bool) -> (minimum : Nat) -> Proclevity -> Lane -> Maybe Lane
     renderToLane diverted minimum p lane = 
       if (p.year * timelineMultiplier) > lane.effectiveMaxYear
-         then Just $ MkLane (lane.show ++ renderProclevity diverted ((p.year `minus` minimum) `minus` ((length lane) `div` timelineMultiplier)) p) (effectiveEndYear diverted p)
+         then Just $ MkLane (lane.show ++ renderProclevity diverted ((p.year `minus` minimum) `minus` ((length lane) `div` timelineMultiplier)) currentYear p) (effectiveEndYear diverted p)
          else Nothing
 
     renderToNextLane : (diverted : Bool) -> (minimum : Nat) -> List Lane -> Proclevity -> List Lane
-    renderToNextLane diverted minimum [] p = MkLane (renderProclevity diverted (p.year `minus` minimum) p) (effectiveEndYear diverted p) :: []
+    renderToNextLane diverted minimum [] p = MkLane (renderProclevity diverted (p.year `minus` minimum) currentYear p) (effectiveEndYear diverted p) :: []
     renderToNextLane diverted minimum (y :: xs) p = maybe (y :: renderToNextLane True minimum xs p) (:: xs) (renderToLane diverted minimum p y)
 
 proclevities : SortedSet Proclevity
@@ -145,5 +163,5 @@ proclevities =
 main : IO ()
 main = do
   traverse_ printLn $
-    renderSequence proclevities
+    renderSequence 2022 proclevities
 
