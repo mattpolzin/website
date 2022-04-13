@@ -47,7 +47,7 @@ diversionLength : Nat
 diversionLength = length diversion
 
 conversion : String
-conversion = "-⌏"
+conversion = "-•"
 
 continuance : String
 continuance = "--"
@@ -154,6 +154,7 @@ proclevities =
            , abs 2016 2024 "Mentor"
            , abs 2017 2020 "Swift Fan"
            , abs 2018 2021 "API Pedant"
+           , abs 2018 2024 "Open Source Contributor"
            , abs 2019 2024 "Backend Developer"
            , abs 2019 2024 "Elixir Fan"
            , abs 2020 2024 "Idris Enthusiest"
