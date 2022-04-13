@@ -4,6 +4,7 @@ import Data.List1
 import Data.Nat
 import Data.SortedSet
 import Data.String
+import System
 
 record Proclevity where
   constructor Proc
@@ -42,23 +43,32 @@ renderedTitle str = "| \{str} |"
 renderedTitleLength : String -> Nat
 renderedTitleLength str = length (renderedTitle str)
 
+timeline : Char
+timeline = '─'
+
+terminus : String
+terminus = "◉─"
+
 ||| A compound-symbol representing a divergence of interests.
 divergence : String
-divergence = "⌎-"
+divergence = "╰─"
 
-divergenceLength : Nat
-divergenceLength = length divergence
+sameHeadLength : length Main.terminus === length Main.divergence
+sameHeadLength = Refl
+
+headLength : Nat
+headLength = length divergence
 
 ||| A compound-symbol representing a convergence of interests.
 ||| Perhaps more generally, the petering out of a particular
 ||| interest.
 convergence : String
-convergence = "-•"
+convergence = "─◉"
 
 ||| A compound-symbol representing the continuation of an interest
 ||| (through present-day).
 continuance : String
-continuance = "--"
+continuance = "─┈"
 
 sameTailLength : length Main.convergence === length Main.continuance
 sameTailLength = Refl
@@ -70,18 +80,42 @@ tailLength = length convergence
 timelineMultiplier : Nat
 timelineMultiplier = 6
 
-data Tail = None | Join | Ongoing
+namespace Head
+  public export
+  data Head = None | Diverted | New
 
-render : (laneSplit : Bool) -> (tail : Tail) -> (offset : Nat) -> (leadup : Nat) -> (leadout : Nat) -> String -> String
-render laneSplit tail offset leadup leadout str = indent offset $
-                                                        renderLaneSplit
-                                                        ++ replicate leadup '-'
-                                                        ++ renderedTitle str
-                                                        ++ replicate leadout '-'
-                                                        ++ renderLaneJoin
+  public export
+  Eq Head where
+    None     == None     = True
+    Diverted == Diverted = True
+    New      == New      = True
+    _ == _ = False
+
+
+namespace Tail
+  public export
+  data Tail = None | Join | Ongoing
+
+  public export
+  Eq Tail where
+    None    == None    = True
+    Join    == Join    = True
+    Ongoing == Ongoing = True
+    _ == _ = False
+
+render : (head : Head) -> (tail : Tail) -> (offset : Nat) -> (leadup : Nat) -> (leadout : Nat) -> String -> String
+render head tail offset leadup leadout str = indent offset $
+                                               renderLaneSplit
+                                               ++ replicate leadup timeline
+                                               ++ renderedTitle str
+                                               ++ replicate leadout timeline
+                                               ++ renderLaneJoin
   where
     renderLaneSplit : String
-    renderLaneSplit = if laneSplit then divergence else ""
+    renderLaneSplit = case head of
+                           Diverted => divergence
+                           New      => terminus
+                           None     => ""
 
     renderLaneJoin : String
     renderLaneJoin = case tail of
@@ -95,18 +129,23 @@ renderProclevity diverted offset currentYear (Proc year duration title) =
   let renderedTitle = renderedTitle title
       offset    = offset * timelineMultiplier
       tails     = (duration * timelineMultiplier) `minus` (length renderedTitle)
-      tailStyle = if not (diverted && tails >= (divergenceLength + tailLength))
+      headStyle = if tails < headLength
+                     then None
+                     else if diverted
+                             then Diverted
+                             else New
+      tailStyle = if tails < (headLength + tailLength)
                      then None
                      else if (year + duration) > currentYear
                              then Ongoing
-                             else Join
+                             else if diverted then Join else None
       leadup    = tails `div` 2
       leadout   = tails `minus` leadup
-      leadup'   = if not diverted then leadup else leadup `minus` divergenceLength
-      leadout'  = if not diverted
+      leadup'   = if headStyle == None then leadup else leadup `minus` headLength
+      leadout'  = if tailStyle == None
                      then leadout
-                     else leadout `minus` ((divergenceLength + tailLength) `minus` (leadup `minus` leadup'))
-  in render (diverted && tails >= divergenceLength) tailStyle offset leadup' leadout' title
+                     else leadout `minus` ((headLength + tailLength) `minus` (leadup `minus` leadup'))
+  in render headStyle tailStyle offset leadup' leadout' title
 
 record Lane where
   constructor MkLane
@@ -129,7 +168,7 @@ effectiveEndYear : (diverted : Bool) -> Proclevity -> Nat
 effectiveEndYear diverted (Proc year duration title) = max ((year + duration) * timelineMultiplier) ((year * timelineMultiplier) + (length $ renderedTitle title) + divergenceLen)
   where
     divergenceLen : Nat
-    divergenceLen = if diverted then divergenceLength else 0
+    divergenceLen = if diverted then headLength else 0
 
 ||| Render a sequence of pre-sorted proclevities.
 ||| The current year is used to determine a point past which entries
@@ -170,8 +209,40 @@ proclevities =
            , abs 2021 2024 "Maven"
            ]
 
+now : Nat
+now = 2022
+
+data Output = Terminal | HTML
+
+parseArgs : List String -> Output
+parseArgs ("html" :: xs) = HTML
+parseArgs _ = Terminal
+
+printToTerminal : IO ()
+printToTerminal =
+  traverse_ printLn $
+    renderSequence now proclevities
+
+printToHTML : IO ()
+printToHTML =
+  let str = concat . intersperse "<br/>" $ Prelude.show <$> (renderSequence now proclevities)
+  in putStrLn """
+  <html style="font-family: Monospace; height: 100%; overflow: hidden;">
+  <head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@latest/css/pico.classless.min.css">
+  </head>
+  <body style="height: 100%;">
+    <div style="white-space: pre; line-height: 2em; padding: 2em; overflow-x: scroll; height: 100%;">\{str}</div>
+  </body>
+  </html>
+  """
+
 main : IO ()
 main = do
-  traverse_ printLn $
-    renderSequence 2022 proclevities
+  args <- drop 1 <$> getArgs
+  let output = parseArgs args
+  case output of
+       Terminal => printToTerminal
+       HTML     => printToHTML
 
