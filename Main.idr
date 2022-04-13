@@ -18,9 +18,11 @@ Show Proclevity where
     title: {title}
     """
 
+||| A proclevity between two given years.
 abs : (start : Nat) -> (end : Nat) -> String -> Proclevity
 abs s e t = Proc s (e `minus` s) t
 
+||| A proclevity from a given year for a given amount of time.
 rel : (start : Nat) -> (duration : Nat) -> String -> Proclevity
 rel = Proc
 
@@ -40,23 +42,29 @@ renderedTitle str = "| \{str} |"
 renderedTitleLength : String -> Nat
 renderedTitleLength str = length (renderedTitle str)
 
-diversion : String
-diversion = "⌎-"
+||| A compound-symbol representing a divergence of interests.
+divergence : String
+divergence = "⌎-"
 
-diversionLength : Nat
-diversionLength = length diversion
+divergenceLength : Nat
+divergenceLength = length divergence
 
-conversion : String
-conversion = "-•"
+||| A compound-symbol representing a convergence of interests.
+||| Perhaps more generally, the petering out of a particular
+||| interest.
+convergence : String
+convergence = "-•"
 
+||| A compound-symbol representing the continuation of an interest
+||| (through present-day).
 continuance : String
 continuance = "--"
 
-sameTailLength : length Main.conversion === length Main.continuance
+sameTailLength : length Main.convergence === length Main.continuance
 sameTailLength = Refl
 
 tailLength : Nat
-tailLength = length conversion
+tailLength = length convergence
 
 ||| The number of dashes to use in the timeline for each year.
 timelineMultiplier : Nat
@@ -73,12 +81,12 @@ render laneSplit tail offset leadup leadout str = indent offset $
                                                         ++ renderLaneJoin
   where
     renderLaneSplit : String
-    renderLaneSplit = if laneSplit then diversion else ""
+    renderLaneSplit = if laneSplit then divergence else ""
 
     renderLaneJoin : String
     renderLaneJoin = case tail of
                           Ongoing => continuance
-                          Join    => conversion
+                          Join    => convergence
                           None    => ""
 
 ||| If diverted, draw indication of split from above line.
@@ -87,18 +95,18 @@ renderProclevity diverted offset currentYear (Proc year duration title) =
   let renderedTitle = renderedTitle title
       offset    = offset * timelineMultiplier
       tails     = (duration * timelineMultiplier) `minus` (length renderedTitle)
-      tailStyle = if not (diverted && tails >= (diversionLength + tailLength))
+      tailStyle = if not (diverted && tails >= (divergenceLength + tailLength))
                      then None
                      else if (year + duration) > currentYear
                              then Ongoing
                              else Join
       leadup    = tails `div` 2
       leadout   = tails `minus` leadup
-      leadup'   = if not diverted then leadup else leadup `minus` diversionLength
+      leadup'   = if not diverted then leadup else leadup `minus` divergenceLength
       leadout'  = if not diverted
                      then leadout
-                     else leadout `minus` ((diversionLength + tailLength) `minus` (leadup `minus` leadup'))
-  in render (diverted && tails >= diversionLength) tailStyle offset leadup' leadout' title
+                     else leadout `minus` ((divergenceLength + tailLength) `minus` (leadup `minus` leadup'))
+  in render (diverted && tails >= divergenceLength) tailStyle offset leadup' leadout' title
 
 record Lane where
   constructor MkLane
@@ -115,13 +123,13 @@ Show Lane where
   show = Lane.show
 
 ||| A Proclevity's effective end year is how far along the timeline the Proclevity's shown text
-||| reaches. If the Proclevity's title and diversion is logner than its duration, the effective
+||| reaches. If the Proclevity's title and divergence is longer than its duration, the effective
 ||| end year is later than the (year + duration).
 effectiveEndYear : (diverted : Bool) -> Proclevity -> Nat
-effectiveEndYear diverted (Proc year duration title) = max ((year + duration) * timelineMultiplier) ((year * timelineMultiplier) + (length $ renderedTitle title) + diversionLen)
+effectiveEndYear diverted (Proc year duration title) = max ((year + duration) * timelineMultiplier) ((year * timelineMultiplier) + (length $ renderedTitle title) + divergenceLen)
   where
-    diversionLen : Nat
-    diversionLen = if diverted then diversionLength else 0
+    divergenceLen : Nat
+    divergenceLen = if diverted then divergenceLength else 0
 
 ||| Render a sequence of pre-sorted proclevities.
 ||| The current year is used to determine a point past which entries
@@ -144,6 +152,7 @@ renderSequence currentYear set with (SortedSet.toList set)
     renderToNextLane diverted minimum [] p = MkLane (renderProclevity diverted (p.year `minus` minimum) currentYear p) (effectiveEndYear diverted p) :: []
     renderToNextLane diverted minimum (y :: xs) p = maybe (y :: renderToNextLane True minimum xs p) (:: xs) (renderToLane diverted minimum p y)
 
+||| Most prominent interests and career moves over time.
 proclevities : SortedSet Proclevity
 proclevities =
   fromList [ abs 1989 2024 "Alive"
