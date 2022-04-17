@@ -1,10 +1,12 @@
 module Main
 
+import Data.Fuel
 import Data.List1
 import Data.Nat
 import Data.SortedSet
 import Data.String
 import System
+import System.File
 
 record Proclevity where
   constructor Proc
@@ -191,24 +193,6 @@ renderSequence currentYear set with (SortedSet.toList set)
     renderToNextLane diverted minimum [] p = MkLane (renderProclevity diverted (p.year `minus` minimum) currentYear p) (effectiveEndYear diverted p) :: []
     renderToNextLane diverted minimum (y :: xs) p = maybe (y :: renderToNextLane True minimum xs p) (:: xs) (renderToLane diverted minimum p y)
 
-||| Most prominent interests and career moves over time.
-proclevities : SortedSet Proclevity
-proclevities =
-  fromList [ abs 1989 2024 "Alive"
-           , abs 2007 2011 "Student"
-           , abs 2010 2019 "iOS Developer"
-           , abs 2012 2017 "Co-Founder"
-           , abs 2016 2019 "Manager"
-           , abs 2016 2024 "Mentor"
-           , abs 2017 2020 "Swift Fan"
-           , abs 2018 2021 "API Pedant"
-           , abs 2018 2024 "Open Source Contributor"
-           , abs 2019 2024 "Backend Developer"
-           , abs 2019 2024 "Elixir Fan"
-           , abs 2020 2024 "Idris Enthusiest"
-           , abs 2021 2024 "Maven"
-           ]
-
 now : Nat
 now = 2022
 
@@ -216,16 +200,17 @@ data Output = Terminal | HTML
 
 parseArgs : List String -> Output
 parseArgs ("html" :: xs) = HTML
+parseArgs (_ :: xs) = parseArgs xs
 parseArgs _ = Terminal
 
-printToTerminal : IO ()
-printToTerminal =
+printToTerminal : HasIO io => SortedSet Proclevity -> io ()
+printToTerminal ps =
   traverse_ printLn $
-    renderSequence now proclevities
+    renderSequence now ps
 
-printToHTML : IO ()
-printToHTML =
-  let str = concat . intersperse "<br/>" $ Prelude.show <$> (renderSequence now proclevities)
+printToHTML : HasIO io => SortedSet Proclevity -> io ()
+printToHTML ps =
+  let str = concat . intersperse "<br/>" $ Prelude.show <$> (renderSequence now ps)
   in putStrLn """
   <html style="font-family: Monospace; height: 100%; overflow: hidden;">
   <head>
@@ -238,11 +223,33 @@ printToHTML =
   </html>
   """
 
+readIn : HasIO io => Fuel -> io (List Proclevity)
+readIn Dry = pure []
+readIn (More fuel) = do
+    Just p <- read
+      | _ => pure []
+    pure (p :: !(readIn fuel))
+  where
+    read : io (Maybe Proclevity)
+    read = do
+      Right line <- fGetLine stdin
+        | _ => pure Nothing
+      let start ::: end :: title  = split (== ' ') line
+        | _ => pure Nothing
+      let (Just startYear) = parsePositive start
+        | _ => pure Nothing
+      let (Just endYear)   = parsePositive end
+        | _ => pure Nothing
+      pure $ Just (abs startYear endYear (fst . break (== '\n') $ concat title))
+
 main : IO ()
 main = do
   args <- drop 1 <$> getArgs
+  printLn args
   let output = parseArgs args
+  input <- readIn (limit 50)
+  let proclevities = fromList input
   case output of
-       Terminal => printToTerminal
-       HTML     => printToHTML
+       Terminal => printToTerminal proclevities
+       HTML     => printToHTML proclevities
 
