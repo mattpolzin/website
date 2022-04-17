@@ -1,8 +1,8 @@
-package website
+package timeline
 
 main = Main
 modules = Main
-executable = website
+executable = timeline
 
 depends = contrib
 options = "--cg node"

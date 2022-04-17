@@ -245,7 +245,6 @@ readIn (More fuel) = do
 main : IO ()
 main = do
   args <- drop 1 <$> getArgs
-  printLn args
   let output = parseArgs args
   input <- readIn (limit 50)
   let proclevities = fromList input
