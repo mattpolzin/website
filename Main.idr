@@ -18,7 +18,7 @@ Show Proclevity where
   show (Proc year duration title) = """
     year: \{show year}
     duration: \{show duration}
-    title: {title}
+    title: \{title}
     """
 
 ||| A proclevity between two given years.
@@ -193,23 +193,28 @@ renderSequence currentYear set with (SortedSet.toList set)
     renderToNextLane diverted minimum [] p = MkLane (renderProclevity diverted (p.year `minus` minimum) currentYear p) (effectiveEndYear diverted p) :: []
     renderToNextLane diverted minimum (y :: xs) p = maybe (y :: renderToNextLane True minimum xs p) (:: xs) (renderToLane diverted minimum p y)
 
-now : Nat
-now = 2022
-
 data Output = Terminal | HTML
 
-parseArgs : List String -> Output
-parseArgs ("html" :: xs) = HTML
-parseArgs (_ :: xs) = parseArgs xs
-parseArgs _ = Terminal
+Year : Type
+Year = Nat
 
-printToTerminal : HasIO io => SortedSet Proclevity -> io ()
-printToTerminal ps =
+||| Parse a list of arguments.
+||| If any argument is the string "html" then the result will be
+||| HTML; otherwise, the result will be plaintext.
+||| If there are any other arguments, they will be interpreted as
+||| the natural number for the current year (e.g. 2024).
+parseArgs : List String -> (Year, Output)
+parseArgs [] = (2024, Terminal)
+parseArgs ("html" :: xs) = mapSnd (const HTML) $ parseArgs xs
+parseArgs (year :: xs) = mapFst (const . maybe 0 cast $ parsePositive year) $ parseArgs xs
+
+printToTerminal : HasIO io => (now: Nat) -> SortedSet Proclevity -> io ()
+printToTerminal now ps =
   traverse_ printLn $
     renderSequence now ps
 
-printToHTML : HasIO io => SortedSet Proclevity -> io ()
-printToHTML ps =
+printToHTML : HasIO io => (now : Nat) -> SortedSet Proclevity -> io ()
+printToHTML now ps =
   let str = concat . intersperse "<br/>" $ Prelude.show <$> (renderSequence now ps)
   in putStrLn """
   <html style="font-family: Monospace; height: 100%; overflow: hidden;">
@@ -240,15 +245,15 @@ readIn (More fuel) = do
         | _ => pure Nothing
       let (Just endYear)   = parsePositive end
         | _ => pure Nothing
-      pure $ Just (abs startYear endYear (fst . break (== '\n') $ concat title))
+      pure $ Just (abs startYear endYear (fst . break (== '\n') $ unwords title))
 
 main : IO ()
 main = do
   args <- drop 1 <$> getArgs
-  let output = parseArgs args
+  let (now, output) = parseArgs args
   input <- readIn (limit 50)
   let proclevities = fromList input
   case output of
-       Terminal => printToTerminal proclevities
-       HTML     => printToHTML proclevities
+       Terminal => printToTerminal now proclevities
+       HTML     => printToHTML now proclevities
 

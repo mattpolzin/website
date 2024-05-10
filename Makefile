@@ -8,7 +8,7 @@ all : timeline
 	cp ./build/exec/timeline ./timeline.js
 
 timeline: ./timeline.js
-	node timeline.js html < proclevities.in > timeline.html
+	node timeline.js 2024 html < proclevities.in > timeline.html
 
 clean:
 	rm -rf ./build/
